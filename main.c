@@ -136,7 +136,7 @@ void PrintBoard(tGameBoard *board)
 
         if(((i + 1) % LEN_BOARD_SIDE) == 0)
         {
-            printf("| rowscore: %d\n", board->rowScore[i / LEN_BOARD_SIDE]);
+            printf("| \n");
         }
     }
 }
