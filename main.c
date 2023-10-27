@@ -7,9 +7,9 @@
 #define NUM_DIAGS       (2)
 
 typedef enum {
-    BLANK,
-    X_BOX,
-    O_BOX
+    BLANK = 0,
+    X_BOX = 1,
+    O_BOX = -1
 } tBox;
 
 typedef struct {
@@ -24,17 +24,21 @@ typedef struct {
 void PrintBoard(tGameBoard *board);
 int AI_Move(tGameBoard *board);
 tBox CheckGameOver(tGameBoard *board);
+void UpdateScores(tGameBoard *board, int move, int scoreInc);
+void updateRowScore(tGameBoard *board, int move, int scoreInc);
+void updateColScore(tGameBoard *board, int move, int scoreInc);
+void updateDiagScore(tGameBoard *board, int move, int scoreInc);
 
 int main()
 {
     tGameBoard gameBoard = { .full = 0 , .gameOver = 0 };
     tBox winner = BLANK;
-    
+
     for(int i=0; i < LEN_BOARD_TOTAL; i++)
     {
         gameBoard.box[i] = BLANK;
     }
-    
+
     for(int i=0; i < LEN_BOARD_SIDE; i++)
     {
         gameBoard.rowScore[i] = 0;
@@ -42,23 +46,23 @@ int main()
         if(i < NUM_DIAGS)
             gameBoard.diagScore[i] = 0;
     }
-    
+
     srand(time(NULL));
-    
+
     PrintBoard(&gameBoard);
-    
+
     while(!gameBoard.full && !gameBoard.gameOver)
     {
         static int odd = 1;
         int move = -1;
-        
+
         if(odd)
         {
             printf("Enter box (1-%d): ", LEN_BOARD_TOTAL);
-            
+
             if(scanf("%d", &move) < 1)
                 break;
-            
+
             if((move < 1) || (move > LEN_BOARD_TOTAL))
             {
                 printf("Invalid box. ");
@@ -70,8 +74,9 @@ int main()
             else
             {
                 gameBoard.box[move - 1] = odd ? X_BOX : O_BOX;
+                UpdateScores(&gameBoard, move, odd ? X_BOX : O_BOX);
                 odd = !odd;
-                
+
                 PrintBoard(&gameBoard);
                 winner = CheckGameOver(&gameBoard);
             }
@@ -80,13 +85,15 @@ int main()
         {
             int AImove = AI_Move(&gameBoard);
             gameBoard.box[AImove - 1] = odd ? X_BOX : O_BOX;
+            UpdateScores(&gameBoard, AImove, odd ? X_BOX : O_BOX);
             odd = !odd;
+            
             PrintBoard(&gameBoard);
             printf("AI chose box %d.\n", AImove);
             winner = CheckGameOver(&gameBoard);
         }
     }
-    
+
     printf("The winner is %s.\n", winner == X_BOX ? "X" : (winner == O_BOX ? "O" : "nobody"));
 
     return 0;
@@ -95,9 +102,9 @@ int main()
 void PrintBoard(tGameBoard *board)
 {
     board->full = 1;
-    
+
     printf("%*s\n", ((LEN_BOARD_SIDE * 2 + 2) * 3 + 1 + 11)/2, "TIC-TAC-TOE");
-    
+
     for(int i=0; i<LEN_BOARD_TOTAL; i++)
     {
         if((i % LEN_BOARD_SIDE) == 0)
@@ -112,7 +119,7 @@ void PrintBoard(tGameBoard *board)
             }
             printf(" --> ");
         }
-        
+
         switch(board->box[i])
         {
             case X_BOX:
@@ -126,10 +133,10 @@ void PrintBoard(tGameBoard *board)
                 board->full = 0;
                 break;
         }
-        
+
         if(((i + 1) % LEN_BOARD_SIDE) == 0)
         {
-            printf("|\n");
+            printf("| rowscore: %d\n", board->rowScore[i / LEN_BOARD_SIDE]);
         }
     }
 }
@@ -137,19 +144,19 @@ void PrintBoard(tGameBoard *board)
 int AI_Move(tGameBoard *board)
 {
     int move = rand() % LEN_BOARD_TOTAL + 1;
-    
+
     while((!board->full) && (board->box[move - 1] != BLANK))
     {
         move = rand() % LEN_BOARD_TOTAL + 1;
     }
-    
+
     return move;
 }
 
 tBox CheckGameOver(tGameBoard *board)
 {
     tBox ret = BLANK;
-    
+
     for(int i=0; i < LEN_BOARD_SIDE; i++)
     {
         if((board->rowScore[i] == LEN_BOARD_SIDE) || (board->colScore[i] == LEN_BOARD_SIDE))
@@ -158,14 +165,14 @@ tBox CheckGameOver(tGameBoard *board)
             board->gameOver = 1;
             break;
         }
-        
+
         if((board->rowScore[i] == -LEN_BOARD_SIDE) || (board->colScore[i] == -LEN_BOARD_SIDE))
         {
             ret = O_BOX;
             board->gameOver = 1;
             break;
         }
-            
+
         if(i < NUM_DIAGS)
         {
             if(board->diagScore[i] == LEN_BOARD_SIDE)
@@ -174,7 +181,7 @@ tBox CheckGameOver(tGameBoard *board)
                 board->gameOver = 1;
                 break;
             }
-            
+
             if(board->diagScore[i] == -LEN_BOARD_SIDE)
             {
                 ret = O_BOX;
@@ -183,7 +190,42 @@ tBox CheckGameOver(tGameBoard *board)
             }
         }
     }
-    
+
     return ret;
 }
 
+void UpdateScores(tGameBoard *board, int move, int scoreInc)
+{
+    updateRowScore(board, move, scoreInc);
+    updateColScore(board, move, scoreInc);
+    updateDiagScore(board, move, scoreInc);
+}
+
+void updateRowScore(tGameBoard *board, int move, int scoreInc)
+{
+    int moveRow = (move - 1) / LEN_BOARD_SIDE;
+    
+    for(int row = 0; row < LEN_BOARD_SIDE; row++)
+    {
+        if(row == moveRow)
+            board->rowScore[row] += scoreInc;
+    }
+}
+
+void updateColScore(tGameBoard *board, int move, int scoreInc)
+{
+    if((move == 1) || (move == 4) || (move == 7))
+        board->colScore[0] += scoreInc;
+    if((move == 2) || (move == 5) || (move == 8))
+        board->colScore[1] += scoreInc;
+    if((move == 3) || (move == 6) || (move == 9))
+        board->colScore[2] += scoreInc;
+}
+
+void updateDiagScore(tGameBoard *board, int move, int scoreInc)
+{
+    if((move == 1) || (move == 5) || (move == 9))
+        board->diagScore[0] += scoreInc;
+    if((move == 3) || (move == 5) || (move == 7))
+        board->diagScore[1] += scoreInc;
+}
